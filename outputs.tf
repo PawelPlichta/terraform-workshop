@@ -1,5 +1,5 @@
 output "ami_id" {
-  value = var.ami_id
+  value = aws_instance.app[0].ami
 }
 
 output "url" {

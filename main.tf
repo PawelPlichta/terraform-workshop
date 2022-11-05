@@ -13,6 +13,21 @@ provider "aws" {
 }
 
 
+data "aws_ami" "debian" {
+  owners      = ["136693071363"]
+  most_recent = true
+
+  filter {
+    name   = "name"
+    values = ["debian-11-amd64-*"]
+  }
+  filter {
+    name   = "state"
+    values = ["available"]
+  }
+}
+
+
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "3.11.0"
@@ -78,7 +93,7 @@ resource "aws_security_group" "ec2_lb_access" {
 
 resource "aws_instance" "app" {
   count         = var.instances_per_subnet * length(module.vpc.private_subnets)
-  ami           = var.ami_id
+  ami           = var.ami_id != "" ? var.ami_id : data.aws_ami.debian.id
   instance_type = "t3.micro"
   subnet_id     = module.vpc.private_subnets[count.index % length(module.vpc.private_subnets)]
 
@@ -96,6 +111,16 @@ resource "aws_instance" "app" {
 
   tags = {
     "Name" = "app-${count.index}"
+  }
+
+  depends_on = [
+    module.vpc.natgw_ids
+  ]
+
+  lifecycle {
+    ignore_changes = [
+      ami
+    ]
   }
 }
 
